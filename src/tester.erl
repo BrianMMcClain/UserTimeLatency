@@ -27,18 +27,24 @@ run_test(KeyCount, Host, UserCount, DayCount, Iterations) ->
 	random:seed(now()),
 	{ok, Pid} = riakc_pb_socket:start_link(Host, 8087),
 
-	{TotalTime, TotalKeys} = run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, Iterations),
+	{TotalTime, TotalKeys} = run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, KeyCount, DayCount, Iterations),
 	io:format("Avg Keys: ~p keys~nAvg Time: ~p ms~n", [TotalKeys / Iterations, TotalTime / Iterations]).
 
-run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, Iterations) ->
-	run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, Iterations, 0, 0).
+run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, KeyCount, DayCount, Iterations) ->
+	run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, KeyCount, DayCount, Iterations, 0, 0).
 
-run_query_loop(_Pid, _StartTimestamp, _EndTimestamp, _UserCount, 0, TotalTime, TotalKeys) ->
+run_query_loop(_Pid, _StartTimestamp, _EndTimestamp, _UserCount, _KeyCount, _DayCount, 0, TotalTime, TotalKeys) ->
 	{TotalTime, TotalKeys};
 
-run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, Iterations, TotalTime, TotalKeys) ->
+run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, KeyCount, DayCount, Iterations, TotalTime, TotalKeys) ->
+	QueryDays = (KeyCount / ?KEYS_PER_USER_PER_MONTH) * 30,
 	UserId = 100000000000000000 + random:uniform(UserCount) - 1,
-	Query = lists:flatten(io_lib:format("SELECT * FROM action WHERE UtcTime >= ~p AND UtcTime <= ~p AND UserId = '~p'", [StartTimestamp, EndTimestamp, UserId])),
+	MaxEndTS = (StartTimestamp + (DayCount * ?MS_PER_DAY)) - (?MS_PER_DAY * QueryDays),
+	TotalTimeSpan = MaxEndTS - StartTimestamp,
+	GStartTimestamp = StartTimestamp + (random:uniform(round(TotalTimeSpan) - 1)),
+	GEndTimestamp = round(GStartTimestamp + (?MS_PER_DAY * QueryDays)),
+
+	Query = lists:flatten(io_lib:format("SELECT * FROM action WHERE UtcTime >= ~p AND UtcTime <= ~p AND UserId = '~p'", [GStartTimestamp, GEndTimestamp, UserId])),
 
 	StartTime = now(),
 	{ok, {_Schema, Data}} = riakc_ts:query(Pid, Query),
@@ -47,4 +53,4 @@ run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, Iterations, TotalTi
 	io:format("(~p) ~p: ~p keys~n", [Iterations, TimeDiff, length(Data)]),
 	TimeRunningTotal = TotalTime + TimeDiff,
 	KeysRunningTotal = TotalKeys + length(Data),
-	run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, Iterations-1, TimeRunningTotal, KeysRunningTotal).
+	run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, KeyCount, DayCount, Iterations-1, TimeRunningTotal, KeysRunningTotal).
