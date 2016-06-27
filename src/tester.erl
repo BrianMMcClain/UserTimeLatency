@@ -1,23 +1,26 @@
 -module(tester).
--export([run_test/1, run_test/2, run_test/3, run_test/4, run_test/5]).
+-export([run_test/1, run_test/2, run_test/3, run_test/4, run_test/5, run_test/6]).
 
 -define(MS_PER_DAY, 86400000).
 -define(KEYS_PER_USER_PER_MONTH, 17000).
 
 run_test(KeyCount) ->
-	run_test(KeyCount, "127.0.0.1").
+	run_test(KeyCount, "127.0.0.1", 8087).
 
 run_test(KeyCount, Host) ->
-	run_test(KeyCount, Host, 100).
+	run_test(KeyCount, Host, 8087).
 
-run_test(KeyCount, Host, UserCount) ->
-	run_test(KeyCount, Host, UserCount, 180).
+run_test(KeyCount, Host, Port) ->
+	run_test(KeyCount, Host, Port, 100).
 
-run_test(KeyCount, Host, UserCount, DayCount) ->
-	run_test(KeyCount, Host, UserCount, DayCount, 100).
+run_test(KeyCount, Host, Port, UserCount) ->
+	run_test(KeyCount, Host, Port, UserCount, 180).
 
-run_test(KeyCount, Host, UserCount, DayCount, Iterations) ->
-	io:format("Querying ~p keys from ~s for ~p users and ~p days of data~n", [KeyCount, Host, UserCount, DayCount]),
+run_test(KeyCount, Host, Port, UserCount, DayCount) ->
+	run_test(KeyCount, Host, Port, UserCount, DayCount, 100).
+
+run_test(KeyCount, Host, Port, UserCount, DayCount, Iterations) ->
+	io:format("Querying ~p keys from ~s:~p for ~p users and ~p days of data~n", [KeyCount, Host, Port, UserCount, DayCount]),
 	
 	StartTimestamp = 1420088400000,
 	%TotalEndTimestamp = StartTimestamp + (?MS_PER_DAY * DayCount),
@@ -25,7 +28,7 @@ run_test(KeyCount, Host, UserCount, DayCount, Iterations) ->
 	EndTimestamp = trunc(StartTimestamp + (MsPerKey * (KeyCount * UserCount))),
 
 	random:seed(now()),
-	{ok, Pid} = riakc_pb_socket:start_link(Host, 8087),
+	{ok, Pid} = riakc_pb_socket:start_link(Host, Port),
 
 	{TotalTime, TotalKeys} = run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, KeyCount, DayCount, Iterations),
 	io:format("Avg Keys: ~p keys~nAvg Time: ~p ms~n", [TotalKeys / Iterations, TotalTime / Iterations]).

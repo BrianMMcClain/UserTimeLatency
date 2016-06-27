@@ -11,5 +11,11 @@ main(Args) ->
 	{UserCount, _} = string:to_integer(cli:get_flag("-u", Args)),
 	{DayCount, _} = string:to_integer(cli:get_flag("-d", Args)),
 	{Iterations, _} = string:to_integer(cli:get_flag("-i", Args)),
+	{Port, _} = string:to_integer(cli:get_flag("-p", Args)),
 
-	tester:run_test(KeyCount, Host, UserCount, DayCount, Iterations).
+	case Port of
+		error ->
+			tester:run_test(KeyCount, Host, 8087, UserCount, DayCount, Iterations);
+		_ ->
+			tester:run_test(KeyCount, Host, Port, UserCount, DayCount, Iterations)
+	end.
