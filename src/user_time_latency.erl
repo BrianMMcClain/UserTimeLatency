@@ -11,11 +11,21 @@ main(Args) ->
 	{DayCount, _} = string:to_integer(cli:get_flag("-d", Args)),
 	{QueryCount, _} = string:to_integer(cli:get_flag("-q", Args)),
 	{OpCount, _} = string:to_integer(cli:get_flag("-c", Args)),
-	{Port, _} = string:to_integer(cli:get_flag("-p", Args)),
+	{PortA, _} = string:to_integer(cli:get_flag("-p", Args)),
+	TableA = cli:get_flag("-t", Args),
 
-	case Port of
+	case PortA of
 		error ->
-			tester:run_test(Host, 8087, UserCount, DayCount, QueryCount, OpCount);
+			Port = 8087;
 		_ ->
-			tester:run_test(Host, Port, UserCount, DayCount, QueryCount, OpCount)
-	end.
+			Port = PortA
+	end,
+
+	case TableA of
+		error ->
+			Table = "action";
+		_ ->
+			Table = TableA
+	end,
+
+	tester:run_test(Host, Port, Table, UserCount, DayCount, QueryCount, OpCount).
