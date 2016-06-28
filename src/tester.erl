@@ -30,6 +30,8 @@ run_test(Host, Port, UserCount, DayCount, QueryCount, OpCount) ->
 	random:seed(now()),
 	{ok, Pid} = riakc_pb_socket:start_link(Host, Port),
 
+	io:format("timestamp,latency,keys~n"),
+
 	{TotalTime, TotalKeys} = run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, DayCount, QueryCount, OpCount),
 	io:format("Avg Keys: ~p keys~nAvg Time: ~p ms~n", [TotalKeys / OpCount, TotalTime / OpCount]).
 
@@ -52,7 +54,12 @@ run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, DayCount, QueryCoun
 	{ok, {_Schema, Data}} = riakc_ts:query(Pid, Query),
 	EndTime = now(),
 	TimeDiff = timer:now_diff(EndTime, StartTime) / 1000, % microseconds converted to milliseconds
-	io:format("(~p) ~p: ~p keys~n", [OpCount, TimeDiff, length(Data)]),
+	
+	{Mega, Sec, Micro} = EndTime,
+  	EndTimeInMS = (Mega*1000000 + Sec)*1000 + round(Micro/1000),
+
+	io:format("~p,~p,~p~n", [EndTimeInMS, TimeDiff, length(Data)]),
+	
 	TimeRunningTotal = TotalTime + TimeDiff,
 	KeysRunningTotal = TotalKeys + length(Data),
 	run_query_loop(Pid, StartTimestamp, EndTimestamp, UserCount, DayCount, QueryCount, OpCount-1, TimeRunningTotal, KeysRunningTotal).
